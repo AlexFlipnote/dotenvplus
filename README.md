@@ -16,20 +16,20 @@ pip install dotenvplus
 ## Usage
 ```env
 # .env
-
-KEY=value
+KEY1=value
+KEY2=123
+KEY3=true
 ```
 
 ```python
 # main.py
-
 from dotenvplus import DotEnv
 
 # Create a DotEnv object
 env = DotEnv()
->>> <DotEnv data={"KEY": "value"}>
+>>> <DotEnv data={"KEY1": "value", "KEY2": 123, "KEY3": True}>
 
 # Call it like a dictionary
-env["KEY"]
->>> "value"
+(env["KEY1"], env["KEY2"], env["KEY3"])
+>>> ("value", 123, True)
 ```
