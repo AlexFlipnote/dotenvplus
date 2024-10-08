@@ -1,14 +1,9 @@
 from dotenvplus import DotEnv
 
-config = DotEnv(".env.example")
+env = DotEnv(".env.example")
 
-print(config)
-print(config.keys)
-print(int(config))
-print(config["var_value"])
+print(env)
+print(env["string_value"])
 
-for k, v in config.items():
+for k, v in env.items():
     print(f"{k}: {v}")
-
-config.get("string_value")
-print(next(k for k, v in config))

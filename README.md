@@ -27,8 +27,9 @@ from dotenvplus import DotEnv
 
 # Create a DotEnv object
 env = DotEnv()
+>>> <DotEnv data={"KEY": "value"}>
 
-Call it like a dictionary
+# Call it like a dictionary
 env["KEY"]
 >>> "value"
 ```
