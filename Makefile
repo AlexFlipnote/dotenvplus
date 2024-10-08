@@ -26,6 +26,9 @@ install_dev:	 ## Install the package in development mode
 venv:  ## Create a virtual environment
 	python -m venv .venv
 
+test:  ## Run tests
+	@python -m unittest discover -s tests -p '*.py'
+
 flake8:  ## Run flake8 on the package
 	@flake8 $(FLAKE8_CONFIG) dotenvplus
 	@echo -e "\033[0;32mNo errors found.\033[0m"
