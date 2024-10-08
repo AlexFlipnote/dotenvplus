@@ -14,10 +14,14 @@ license = {text = "MIT"}
 
 dynamic = ["version"]
 readme = "README.md"
-keywords = ["discord", "http", "api", "interaction", "quart", "webhook", "slash"]
+keywords = ["dotenv", "env", "config", "environment", "variables", "key-value", "parser"]
 authors = [{name = "AlexFlipnote", email = "root@alexflipnote.dev"}]
 
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/AlexFlipnote/dotenvplus"
+Repository = "https://github.com/AlexFlipnote/dotenvplus"
 
 [project.optional-dependencies]
 dev = ["pyright", "flake8", "toml"]
