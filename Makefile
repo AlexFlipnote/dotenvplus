@@ -15,7 +15,7 @@ install:  ## Install the package
 	pip install .
 
 uninstall:  ## Uninstall the package
-	pip uninstall -y dotenvplus
+	pip uninstall -y discord.http
 
 reinstall: uninstall install  ## Reinstall the package
 
@@ -23,25 +23,22 @@ reinstall: uninstall install  ## Reinstall the package
 install_dev:	 ## Install the package in development mode
 	pip install .[dev]
 
-venv:  ## Create a virtual environment
-	python -m venv .venv
-
 test:  ## Run tests
-	@python -m unittest discover -s tests -p '*.py'
+	@uv run python -m unittest discover -s tests -p '*.py'
 
-type:  ## Run pyright type checker
-	@pyright --pythonversion 3.7 --project dotenvplus
+type:  ## Run pyright on the package
+	@pyright discord_http --pythonversion 3.11
 
 lint:  ## Run ruff linter
 	@ruff check --config pyproject.toml
 
 clean:  ## Clean the project
-	@rm -rf build dist *.egg-info .venv
+	@rm -rf build dist *.egg-info .venv docs/_build
+	@rm uv.lock
 
 # Maintainer-only commands
 upload_pypi:  ## Maintainer only - Upload latest version to PyPi
 	@echo Uploading to PyPi...
-	pip install .
-	python -m build
-	twine upload dist/*
+	uv build
+	uvx uv-publish
 	@echo Done!

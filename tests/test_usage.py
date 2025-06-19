@@ -47,7 +47,7 @@ class TestDotEnv(unittest.TestCase):
 
     def test_comment_removed(self):
         dotenv = DotEnv(self.file_path)
-        self.assertNotIn("#", dotenv.get("COMMENT_KEY"))
+        self.assertNotIn("#", str(dotenv.get("COMMENT_KEY")))
 
     def test_key_in_env(self):
         dotenv = DotEnv(self.file_path)

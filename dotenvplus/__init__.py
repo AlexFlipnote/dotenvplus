@@ -1,15 +1,18 @@
 import os
 import re
 
-from typing import Any, Iterator, Optional, Tuple, List, Dict
+from typing import Any, Iterator, Optional, Tuple, List, Dict, Union
 
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 
 # RegEx patterns
 re_keyvar = re.compile(r"^\s*([a-zA-Z0-9_]*)\s*=\s*(.+)$")
 re_isdigit = re.compile(r"^(?:-)?\d+$")
 re_isfloat = re.compile(r"^(?:-)?\d+\.\d+$")
 re_var_call = re.compile(r"\$\{([a-zA-Z0-9_]*)\}")
+
+# Return types
+DotEnvReturnType = Union[str, int, float, bool, None]
 
 
 class ParsingError(Exception):
@@ -24,13 +27,13 @@ class DotEnv:
 
     Arguments
     ---------
-    path: `str` | `None`
+    path:
         The path to the .env file.
         If none are provided, it defaults to `./.env`
-    update_system_env: `bool`
+    update_system_env:
         If True, it will load the values to the instance's environment variables.
         Be warned that this will only support string values.
-    handle_key_not_found: `bool`
+    handle_key_not_found:
         If True, it will make the object return `None` for any key that is not found.
         Essentially simulating `dict().get("Key", None)`
 
@@ -87,7 +90,7 @@ class DotEnv:
     def __repr__(self) -> str:
         return f"<DotEnv data={self._env}>"
 
-    def __getitem__(self, key: str) -> Any:  # noqa: ANN401
+    def __getitem__(self, key: str) -> DotEnvReturnType:
         if self._handle_key_not_found:
             return self._env.get(key, None)
         return self._env[key]
@@ -119,28 +122,28 @@ class DotEnv:
 
     @property
     def keys(self) -> List[str]:
-        """ `list[str]`: Returns a list of the keys. """
+        """ Returns a list of the keys. """
         return list(self._env.keys())
 
     @property
-    def values(self) -> List[Any]:
-        """ `list[Any]`: Returns a list of the values. """
+    def values(self) -> List[DotEnvReturnType]:
+        """ Returns a list of the values. """
         return list(self._env.values())
 
-    def get(self, key: str, default: Any = None) -> Any:  # noqa: ANN401
-        """ `Any`: Return the value for key if key is in the dictionary, else default. """
+    def get(self, key: str, default: Optional[Any] = None) -> DotEnvReturnType:  # noqa: ANN401
+        """ Return the value for key if key is in the dictionary, else default. """
         return self._env.get(key, default)
 
-    def items(self) -> List[Tuple[str, Any]]:
-        """ `list[tuple[str, Any]]`: Returns a list of the key-value pairs. """
+    def items(self) -> List[Tuple[str, DotEnvReturnType]]:
+        """ Returns a list of the key-value pairs. """
         return list(self._env.items())
 
-    def copy(self) -> Dict[str, Any]:
-        """ `dict[str, Any]`: Returns a shallow copy of the parsed values. """
+    def copy(self) -> Dict[str, DotEnvReturnType]:
+        """ Returns a shallow copy of the parsed values. """
         return self._env.copy()
 
-    def to_dict(self) -> Dict[str, Any]:
-        """ `dict`: Returns a dictionary of the parsed values. """
+    def to_dict(self) -> Dict[str, DotEnvReturnType]:
+        """ Returns a dictionary of the parsed values. """
         return self._env
 
     def _parser(self) -> None:
