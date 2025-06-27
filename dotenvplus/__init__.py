@@ -6,7 +6,7 @@ from typing import (
     Union, Generic, TypeVar, cast, TypedDict
 )
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 # RegEx patterns
 re_keyvar = re.compile(r"^\s*(?:export\s+)?([a-zA-Z0-9_]+)\s*=\s*(.*)$")
@@ -190,7 +190,7 @@ class DotEnv(Generic[DotT]):
         return cast("DotT", self.__env)
 
     @classmethod
-    def create_types(cls, path: Optional[str]) -> None:
+    def create_types(cls, path: Optional[str] = None) -> None:
         """
         Creates a TypedDict from the .env file to `./types/dotenvplus.py` automatically.
 
