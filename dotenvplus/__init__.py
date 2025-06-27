@@ -6,7 +6,7 @@ from typing import (
     Union, Generic, TypeVar, cast, TypedDict
 )
 
-__version__ = "0.0.9"
+__version__ = "0.0.10"
 
 # RegEx patterns
 re_keyvar = re.compile(r"^\s*(?:export\s+)?([a-zA-Z0-9_]+)\s*=\s*(.*)$")
@@ -205,7 +205,6 @@ class DotEnv(Generic[DotT]):
 
         for key, value in env.items():
             payload += f"    {key}: {type(value).__name__.replace('NoneType', 'None')}\n"
-        payload += "\n"
 
         if not os.path.exists("./utils"):
             os.mkdir("./utils")
