@@ -6,7 +6,7 @@ from typing import (
     Union, Generic, TypeVar, cast, TypedDict
 )
 
-__version__ = "0.0.8"
+__version__ = "0.0.9"
 
 # RegEx patterns
 re_keyvar = re.compile(r"^\s*(?:export\s+)?([a-zA-Z0-9_]+)\s*=\s*(.*)$")
@@ -17,12 +17,6 @@ re_var_call = re.compile(r"\$\{([a-zA-Z0-9_]*)\}")
 # Return types
 DotEnvReturnType = Union[str, int, float, bool, None]
 DotT = TypeVar("DotT", bound=TypedDict)  # type: ignore
-
-# We only care about the main class and the ParsingError for user
-__slots__ = (
-    "DotEnv",
-    "ParsingError",
-)
 
 
 class ParsingError(Exception):
@@ -202,7 +196,10 @@ class DotEnv(Generic[DotT]):
         """
         env = cls(path)
         payload = (
-            "from typing import TypedDict\n\n\n"
+            "from typing import TypedDict\n\n"
+            "__all__ = (\n"
+            f'    "{cls.__name__}Types",\n'
+            ")\n\n\n"
             f"class {cls.__name__}Types(TypedDict):\n"
         )
 
@@ -210,9 +207,23 @@ class DotEnv(Generic[DotT]):
             payload += f"    {key}: {type(value).__name__.replace('NoneType', 'None')}\n"
         payload += "\n"
 
-        if not os.path.exists("./types"):
-            os.mkdir("./types")
-        with open("./types/dotenvplus.py", "w", encoding="utf-8") as f:
+        if not os.path.exists("./utils"):
+            os.mkdir("./utils")
+        if not os.path.exists("./utils/types"):
+            os.mkdir("./utils/types")
+
+        if not os.path.exists("./utils/types/__init__.py"):
+            with open("./utils/types/__init__.py", "w", encoding="utf-8") as f:
+                f.write("from .dotenvplus import *\n")
+
+        else:
+            with open("./utils/types/__init__.py", encoding="utf-8") as f:
+                content = f.read()
+                if " .dotenvplus " not in content:
+                    with open("./utils/types/__init__.py", "a", encoding="utf-8") as f:
+                        f.write("from .dotenvplus import *\n")
+
+        with open("./utils/types/dotenvplus.py", "w", encoding="utf-8") as f:
             f.write(payload)
 
     def __parser(self) -> None:
