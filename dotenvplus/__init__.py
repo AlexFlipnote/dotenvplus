@@ -87,7 +87,7 @@ class DotEnv(Generic[DotT]):
             })
 
     def __repr__(self) -> str:
-        return f"<DotEnv data={self.__env}>"
+        return f"<DotEnv {self.__env}>"
 
     def __getitem__(self, key: str) -> DotEnvReturnType:
         if self.__handle_key_not_found:

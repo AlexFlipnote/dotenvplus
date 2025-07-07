@@ -26,8 +26,8 @@ KEY3=true
 from dotenvplus import DotEnv
 
 # Create a DotEnv object
-env = DotEnv()
->>> <DotEnv data={"KEY1": "value", "KEY2": 123, "KEY3": True}>
+env = DotEnv(".env")
+>>> {"KEY1": "value", "KEY2": 123, "KEY3": True}
 
 # Call it like a dictionary
 (env["KEY1"], env["KEY2"], env["KEY3"])
