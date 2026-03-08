@@ -3,10 +3,10 @@ import re
 
 from typing import (
     Any, Iterator, Optional, Tuple, List, Dict,
-    Union, Generic, TypeVar, cast, TypedDict
+    Generic, TypeVar, cast, TypedDict
 )
 
-__version__ = "0.0.10"
+__version__ = "0.0.11"
 
 # RegEx patterns
 re_keyvar = re.compile(r"^\s*(?:export\s+)?([a-zA-Z0-9_]+)\s*=\s*(.*)$")
@@ -15,7 +15,6 @@ re_isfloat = re.compile(r"^(?:-)?\d+\.\d+$")
 re_var_call = re.compile(r"\$\{([a-zA-Z0-9_]*)\}")
 
 # Return types
-DotEnvReturnType = Union[str, int, float, bool, None]
 DotT = TypeVar("DotT", bound=TypedDict)  # type: ignore
 
 
@@ -43,7 +42,6 @@ class DotEnv(Generic[DotT]):
 
     Returns
     -------
-    DotEnv:
         A DotEnv object that can be used to access the parsed values, just like dict.
         The object is a dictionary-like object, so you can do `DotEnv()["KEY"]` to access the value.
 
@@ -53,9 +51,9 @@ class DotEnv(Generic[DotT]):
 
     Raises
     ------
-    `FileNotFoundError`
+    FileNotFoundError
         If the file_path is not a valid path.
-    `ParsingError`
+    ParsingError
         If one of the values cannot be parsed.
     """
     def __init__(
@@ -66,7 +64,7 @@ class DotEnv(Generic[DotT]):
         handle_key_not_found: bool = False,
     ):
         # General values
-        self.__env: dict[str, DotEnvReturnType] = {}
+        self.__env: dict[str, Any] = {}
 
         # Defined values
         self.__quotes: Tuple[str, ...] = ('"', "'")
@@ -89,12 +87,12 @@ class DotEnv(Generic[DotT]):
     def __repr__(self) -> str:
         return f"<DotEnv {self.__env}>"
 
-    def __getitem__(self, key: str) -> DotEnvReturnType:
+    def __getitem__(self, key: str) -> Any:  # noqa: ANN401
         if self.__handle_key_not_found:
             return self.__env.get(key, None)
         return self.__env[key]
 
-    def __setitem__(self, key: str, value: DotEnvReturnType) -> None:
+    def __setitem__(self, key: str, value: Any) -> None:  # noqa: ANN401
         if not isinstance(value, (str, int, float, bool, type(None))):
             raise TypeError(f"Value must be a string, int, float, bool, or None, got {type(value)}")
         self.__env[key] = value
@@ -111,7 +109,7 @@ class DotEnv(Generic[DotT]):
     def __len__(self) -> int:
         return len(self.__env)
 
-    def __iter__(self) -> Iterator[Tuple[str, DotEnvReturnType]]:
+    def __iter__(self) -> Iterator[Tuple[str, Any]]:
         return iter(self.__env.items())
 
     def __contains__(self, key: str) -> bool:
@@ -123,7 +121,7 @@ class DotEnv(Generic[DotT]):
         return list(self.__env.keys())
 
     @property
-    def values(self) -> List[DotEnvReturnType]:
+    def values(self) -> List[Any]:
         """ Returns a list of the values. """
         return list(self.__env.values())
 
@@ -131,7 +129,7 @@ class DotEnv(Generic[DotT]):
         self,
         key: str,
         default: Optional[Any] = None  # noqa: ANN401
-    ) -> DotEnvReturnType:
+    ) -> Any:  # noqa: ANN401
         """
         Return the value for key if key is in the dictionary, else default.
 
@@ -144,20 +142,19 @@ class DotEnv(Generic[DotT]):
 
         Returns
         -------
-        DotEnvReturnType:
             The value of the key, or the default value if the key is not found.
         """
         return self.__env.get(key, default)
 
-    def items(self) -> List[Tuple[str, DotEnvReturnType]]:
+    def items(self) -> List[Tuple[str, Any]]:
         """ Returns a list of the key-value pairs. """
         return list(self.__env.items())
 
-    def copy(self) -> Dict[str, DotEnvReturnType]:
+    def copy(self) -> Dict[str, Any]:
         """ Returns a shallow copy of the parsed values. """
         return self.__env.copy()
 
-    def to_dict(self) -> Dict[str, DotEnvReturnType]:
+    def to_dict(self) -> Dict[str, Any]:
         """ Returns a dictionary of the parsed values. """
         return self.__env
 
@@ -234,9 +231,9 @@ class DotEnv(Generic[DotT]):
 
         Raises
         ------
-        `FileNotFoundError`
+        FileNotFoundError
             If the file_path is not a valid path.
-        `ParsingError`
+        ParsingError
             If one of the values cannot be parsed.
         """
         with open(self.__path, encoding="utf-8") as f:
