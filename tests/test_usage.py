@@ -6,7 +6,8 @@ from dotenvplus import DotEnv, ParsingError
 
 class TestDotEnv(unittest.TestCase):
     def setUp(self):
-        # Create a sample .env file content
+        os.environ["SYSTEM_VAR"] = "system_value"
+
         self.env_content = (
             "# Comment line\n"
             "STRING_KEY=HelloWorld\n"
@@ -20,38 +21,71 @@ class TestDotEnv(unittest.TestCase):
             "NONE_KEY=none\n"
             "NIL_KEY=nil\n"
             "STRING_QUOTED_KEY='quoted_value'\n"
+            "HASH_PASS=\"my#super#secret\"\n"
+            "INTERPOLATED_KEY=${STRING_KEY}_appended\n"
+            "SYS_INTERPOLATED_KEY=${SYSTEM_VAR}\n"
+            "export EXPORTED_KEY=exported_value\n"
         )
 
-        # Write the sample content to a temporary .env file
         self.file_path = ".env"
-        with open(self.file_path, "w") as f:
+        with open(self.file_path, "w", encoding="utf-8") as f:
             f.write(self.env_content)
 
     def tearDown(self):
-        # Remove the temporary .env file after tests
         if os.path.exists(self.file_path):
             os.remove(self.file_path)
 
-    def test_parsing_env_file(self):
-        dotenv = DotEnv(self.file_path)
-        self.assertIsInstance(dotenv, DotEnv)
-        self.assertIsInstance(dotenv.get("STRING_KEY"), str)
-        self.assertIsInstance(dotenv.get("INT_KEY"), int)
-        self.assertIsInstance(dotenv.get("STR_INT_KEY"), str)
-        self.assertIsInstance(dotenv.get("FLOAT_KEY"), float)
-        self.assertIsInstance(dotenv.get("BOOL_TRUE_KEY"), bool)
-        self.assertIsInstance(dotenv.get("BOOL_FALSE_KEY"), bool)
-        self.assertIsInstance(dotenv.get("NULL_KEY"), type(None))
-        self.assertIsInstance(dotenv.get("NONE_KEY"), type(None))
-        self.assertIsInstance(dotenv.get("NIL_KEY"), type(None))
+        if "SYSTEM_VAR" in os.environ:
+            del os.environ["SYSTEM_VAR"]
 
-    def test_comment_removed(self):
+    def test_parsing_exact_values(self):
         dotenv = DotEnv(self.file_path)
-        self.assertNotIn("#", str(dotenv.get("COMMENT_KEY")))
 
-    def test_key_in_env(self):
+        self.assertEqual(dotenv["STRING_KEY"], "HelloWorld")
+        self.assertEqual(dotenv["INT_KEY"], 1234)
+        self.assertEqual(dotenv["STR_INT_KEY"], "1234")
+        self.assertEqual(dotenv["FLOAT_KEY"], 12.34)
+        self.assertTrue(dotenv["BOOL_TRUE_KEY"])
+        self.assertFalse(dotenv["BOOL_FALSE_KEY"])
+        self.assertIsNone(dotenv["NULL_KEY"])
+        self.assertIsNone(dotenv["NONE_KEY"])
+        self.assertIsNone(dotenv["NIL_KEY"])
+        self.assertEqual(dotenv["STRING_QUOTED_KEY"], "quoted_value")
+
+    def test_edge_cases_and_interpolation(self):
+        dotenv = DotEnv(self.file_path)
+
+        self.assertEqual(dotenv["COMMENT_KEY"], "comment")
+        self.assertEqual(dotenv["HASH_PASS"], "my#super#secret")
+        self.assertEqual(dotenv["INTERPOLATED_KEY"], "HelloWorld_appended")
+        self.assertEqual(dotenv["SYS_INTERPOLATED_KEY"], "system_value")
+        self.assertEqual(dotenv["EXPORTED_KEY"], "exported_value")
+
+    def test_mismatched_quotes_not_treated_as_string(self):
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write("MISMATCHED='value\"\n")
+
+        dotenv = DotEnv(self.file_path)
+        # Mismatched quotes should NOT strip quotes or force string type
+        self.assertIn("'", dotenv["MISMATCHED"])
+
+    def test_update_system_env(self):
+        DotEnv(self.file_path, update_system_env=True)
+        self.assertEqual(os.environ.get("STRING_KEY"), "HelloWorld")
+        self.assertEqual(os.environ.get("INT_KEY"), "1234")
+
+        del os.environ["STRING_KEY"]
+        del os.environ["INT_KEY"]
+
+    def test_mapping_behaviors(self):
         dotenv = DotEnv(self.file_path)
         self.assertIn("STRING_KEY", dotenv)
+        self.assertEqual(len(dotenv), 15)
+
+        dotenv["NEW_KEY"] = 99
+        self.assertEqual(dotenv["NEW_KEY"], 99)
+        del dotenv["NEW_KEY"]
+        self.assertNotIn("NEW_KEY", dotenv)
 
     def test_raises_error_on_missing_file(self):
         with self.assertRaises(FileNotFoundError):
@@ -59,20 +93,18 @@ class TestDotEnv(unittest.TestCase):
 
     def test_raises_error_on_key_not_found(self):
         with self.assertRaises(KeyError):
-            DotEnv(self.file_path)["NON_EXISTENT_KEY"]
+            _ = DotEnv(self.file_path)["NON_EXISTENT_KEY"]
 
     def test_config_handle_key_not_found(self):
         dotenv_with_handling = DotEnv(self.file_path, handle_key_not_found=True)
         self.assertIsNone(dotenv_with_handling["NON_EXISTENT_KEY"])
 
     def test_invalid_format(self):
-        # Write an invalid format to the file
-        with open(self.file_path, "w") as f:
+        with open(self.file_path, "w", encoding="utf-8") as f:
             f.write("INVALID_LINE\n")
 
         with self.assertRaises(ParsingError):
             DotEnv(self.file_path)
-
 
 if __name__ == "__main__":
     unittest.main()

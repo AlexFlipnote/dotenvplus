@@ -1,12 +1,13 @@
 import os
 import re
 
+from collections.abc import MutableMapping
 from typing import (
-    Any, Iterator, Optional, Tuple, List, Dict,
-    Generic, TypeVar, cast, TypedDict
+    Any, Iterator, Optional, Tuple, Dict,
+    Generic, TypeVar, cast, TypedDict, List
 )
 
-__version__ = "0.0.11"
+__version__ = "0.0.12"
 
 # RegEx patterns
 re_keyvar = re.compile(r"^\s*(?:export\s+)?([a-zA-Z0-9_]+)\s*=\s*(.*)$")
@@ -22,7 +23,7 @@ class ParsingError(Exception):
     pass
 
 
-class DotEnv(Generic[DotT]):
+class DotEnv(MutableMapping, Generic[DotT]):
     """
     DotEnv is a dotenv parser for Python with additional type support.
 
@@ -64,7 +65,7 @@ class DotEnv(Generic[DotT]):
         handle_key_not_found: bool = False,
     ):
         # General values
-        self.__env: dict[str, Any] = {}
+        self.__env: Dict[str, Any] = {}
 
         # Defined values
         self.__quotes: Tuple[str, ...] = ('"', "'")
@@ -103,52 +104,11 @@ class DotEnv(Generic[DotT]):
     def __str__(self) -> str:
         return str(self.__env)
 
-    def __int__(self) -> int:
-        return len(self.__env)
-
     def __len__(self) -> int:
         return len(self.__env)
 
-    def __iter__(self) -> Iterator[Tuple[str, Any]]:
-        return iter(self.__env.items())
-
-    def __contains__(self, key: str) -> bool:
-        return key in self.__env
-
-    @property
-    def keys(self) -> List[str]:
-        """ Returns a list of the keys. """
-        return list(self.__env.keys())
-
-    @property
-    def values(self) -> List[Any]:
-        """ Returns a list of the values. """
-        return list(self.__env.values())
-
-    def get(
-        self,
-        key: str,
-        default: Optional[Any] = None  # noqa: ANN401
-    ) -> Any:  # noqa: ANN401
-        """
-        Return the value for key if key is in the dictionary, else default.
-
-        Parameters
-        ----------
-        key:
-            The key to look for.
-        default:
-            The default value to return if the key is not found.
-
-        Returns
-        -------
-            The value of the key, or the default value if the key is not found.
-        """
-        return self.__env.get(key, default)
-
-    def items(self) -> List[Tuple[str, Any]]:
-        """ Returns a list of the key-value pairs. """
-        return list(self.__env.items())
+    def __iter__(self) -> Iterator[str]:
+        return iter(self.__env)
 
     def copy(self) -> Dict[str, Any]:
         """ Returns a shallow copy of the parsed values. """
@@ -180,48 +140,6 @@ class DotEnv(Generic[DotT]):
         """
         return cast("DotT", self.__env)
 
-    @classmethod
-    def create_types(cls, path: Optional[str] = None) -> None:
-        """
-        Creates a TypedDict from the .env file to `./types/dotenvplus.py` automatically.
-
-        Parameters
-        ----------
-        path:
-            The path to the .env file.
-            If none are provided, it defaults to `./.env`
-        """
-        env = cls(path)
-        payload = (
-            "from typing import TypedDict\n\n"
-            "__all__ = (\n"
-            f'    "{cls.__name__}Types",\n'
-            ")\n\n\n"
-            f"class {cls.__name__}Types(TypedDict):\n"
-        )
-
-        for key, value in env.items():
-            payload += f"    {key}: {type(value).__name__.replace('NoneType', 'None')}\n"
-
-        if not os.path.exists("./utils"):
-            os.mkdir("./utils")
-        if not os.path.exists("./utils/types"):
-            os.mkdir("./utils/types")
-
-        if not os.path.exists("./utils/types/__init__.py"):
-            with open("./utils/types/__init__.py", "w", encoding="utf-8") as f:
-                f.write("from .dotenvplus import *\n")
-
-        else:
-            with open("./utils/types/__init__.py", encoding="utf-8") as f:
-                content = f.read()
-                if " .dotenvplus " not in content:
-                    with open("./utils/types/__init__.py", "a", encoding="utf-8") as f:
-                        f.write("from .dotenvplus import *\n")
-
-        with open("./utils/types/dotenvplus.py", "w", encoding="utf-8") as f:
-            f.write(payload)
-
     def __parser(self) -> None:
         """
         Parse the .env file and store the values in a dictionary.
@@ -237,13 +155,12 @@ class DotEnv(Generic[DotT]):
             If one of the values cannot be parsed.
         """
         with open(self.__path, encoding="utf-8") as f:
-            data: list[str] = f.readlines()
+            data: List[str] = f.readlines()
 
         for line_no, line in enumerate(data, start=1):
             line = line.strip()
 
             if line.startswith("#") or line == "":
-                # Ignore comment or empty line
                 continue
 
             find_kv = re_keyvar.search(line)
@@ -254,25 +171,24 @@ class DotEnv(Generic[DotT]):
                 )
 
             key, value = find_kv.groups()
+            is_string_forced = False
 
-            # Replace any variables in the value
+            if (
+                len(value) >= 2 and
+                value[0] in self.__quotes and
+                value[0] == value[-1]
+            ):
+                value = value[1:-1]
+                is_string_forced = True
+            else:
+                value = value.split("#")[0].strip()
+
             value = re_var_call.sub(
-                lambda m: str(self.__env.get(m.group(1), "undefined")),
+                lambda m: str(self.__env.get(m.group(1), os.environ.get(m.group(1), ""))),
                 str(value)
             )
 
-            # Remove comment on the value itself too (if any)
-            value = value.split("#")[0].strip()
-
-            if (
-                value.startswith(self.__quotes) and
-                value.endswith(self.__quotes)
-            ):
-                # Remove quotes and skip the parsing step
-                value = value[1:-1]
-
-            else:
-                # String is not forced, go ahead and parse it
+            if not is_string_forced:
                 if re_isdigit.search(value):
                     value = int(value)
 
