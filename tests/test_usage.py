@@ -106,5 +106,33 @@ class TestDotEnv(unittest.TestCase):
         with self.assertRaises(ParsingError):
             DotEnv(self.file_path)
 
+    def test_to_dict_returns_copy(self):
+        dotenv = DotEnv(self.file_path)
+        d = dotenv.to_dict()
+        d["INJECTED"] = "bad"
+        self.assertNotIn("INJECTED", dotenv)
+
+    def test_empty_interpolation_not_consumed(self):
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write("KEY=${}\n")
+        dotenv = DotEnv(self.file_path)
+        self.assertEqual(dotenv["KEY"], "${}")
+
+    def test_pathlib_path_accepted(self):
+        import pathlib
+        dotenv = DotEnv(pathlib.Path(self.file_path))
+        self.assertEqual(dotenv["STRING_KEY"], "HelloWorld")
+
+    def test_repr_does_not_expose_values(self):
+        dotenv = DotEnv(self.file_path)
+        r = repr(dotenv)
+        self.assertNotIn("HelloWorld", r)
+        self.assertIn("STRING_KEY", r)
+
+    def test_setitem_rejects_invalid_type(self):
+        dotenv = DotEnv(self.file_path)
+        with self.assertRaises(TypeError):
+            dotenv["BAD"] = [1, 2, 3]
+
 if __name__ == "__main__":
     unittest.main()

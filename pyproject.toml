@@ -2,14 +2,14 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.pdm.source]
+[[tool.pdm.source]]
 name = "public"
 url = "https://github.com/AlexFlipnote/dotenvplus"
 
 [project]
 name = "dotenvplus"
 description = "Reads key-value pairs from a .env file and supports multiple values with dynamic interpolation."
-requires-python = ">=3.7.0"
+requires-python = ">=3.10"
 license = "MIT"
 
 dynamic = ["version"]
@@ -39,7 +39,7 @@ version = {attr = "dotenvplus.__version__"}
 readme = {file = ["README.md"]}
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py310"
 indent-width = 4
 line-length = 256  # Debating to change this.. not sure yet
 output-format = "concise"
@@ -150,7 +150,7 @@ reportOptionalSubscript = "none"
 reportOptionalMemberAccess = "none"
 reportUnnecessaryTypeIgnoreComment = "warning"
 typeCheckingMode = "basic"
-pythonVersion = "3.7"
+pythonVersion = "3.10"
 
 include = [
   "dotenvplus/*",
@@ -166,4 +166,6 @@ exclude = [
   "dist",
   "tests",
   "examples",
+  "**/node_modules",
+  "**/.*",
 ]

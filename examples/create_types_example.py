@@ -12,15 +12,10 @@ class DotEnvTypes(TypedDict):
     VAR_VALUE: str
     COMMENT_VALUE: str
 
-# You can also automatically create a TypedDict from the .env file
-# DotEnv.create_types(".env.example")
-# It creates it to `./utils/types/dotenvplus.py`
-
-# After doing this, you can do:
-env: DotEnv[DotEnvTypes] = DotEnv[DotEnvTypes](".env.example")
+env: DotEnv[DotEnvTypes] = DotEnv(".env.example")
 env_types = env.as_typed()
 
 print(env_types["STRING_VALUE"])
 
 # You can also one-line it:
-# env: DotEnv[DotEnvTypes] = DotEnv[DotEnvTypes](".env.example").as_typed()
+# env: DotEnv[DotEnvTypes] = DotEnv(".env.example").as_typed()

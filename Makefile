@@ -1,43 +1,50 @@
-FLAKE8_CONFIG := $(shell \
-	if python -c "import toml" 2>/dev/null; then \
-		python -c "import toml; data = toml.load('pyproject.toml'); flake8 = data.get('tool', {}).get('flake8', {}); max_line_length = flake8.get('max-line-length', 128); ignores = ' '.join(['--ignore=' + i for i in flake8.get('ignore', [])]); print(f'--max-line-length {max_line_length} {ignores}')"; \
-	else \
-		echo "--max-line-length 128"; \
-	fi)
+HAS_UV := $(shell command -v uv 2> /dev/null)
+
+ifdef HAS_UV
+    RUN := uv run
+    VENV_CMD := uv venv
+    INSTALL_DEV_CMD := uv sync --all-extras
+else
+    RUN :=
+    VENV_CMD := python -m venv .venv
+    INSTALL_DEV_CMD := pip install .[dev]
+endif
 
 target:
-	@echo -e "\033[1mdotenvplus v$(shell grep -oP '(?<=__version__ = ")[^"]*' dotenvplus/__init__.py)\033[0m" \
-	"\nUse 'make \033[0;36mtarget\033[0m' where \033[0;36mtarget\033[0m is one of the following:"
-	@awk -F ':|##' '/^[^\t].+?:.*?##/ { printf " \033[0;36m%-15s\033[0m %s\n", $$1, $$NF }' $(MAKEFILE_LIST)
+	@printf "\033[1mDotEnvPlus v$(shell grep -oP '(?<=__version__ = ")[^"]*' dotenvplus/__init__.py)\033[0m / Use 'make \033[0;36mtarget\033[0m' where \033[0;36mtarget\033[0m is one of the following:\n\n"
+	@awk -F ':|##' '/^[^\t].+?:.*?##/ {t[++c]=$$1; d[c]=$$NF; type[c]=1; if(length($$1)>m) m=length($$1)} /^##@/ {type[++c]=0; text[c]=substr($$0, 5)} END {for(i=1;i<=c;i++) if(type[i]==1) printf "  \033[0;36m%-*s\033[0m %s\n", m, t[i], d[i]; else {if(h++) printf "\n"; printf "\033[1m%s\033[0m\n", text[i]}}' $(MAKEFILE_LIST)
 
-# Production tools
+##@ Production tools
 install:  ## Install the package
 	pip install .
 
 uninstall:  ## Uninstall the package
-	pip uninstall -y discord.http
+	pip uninstall -y dotenvplus
 
 reinstall: uninstall install  ## Reinstall the package
 
-# Development tools
+##@ Development tools
 install_dev:	 ## Install the package in development mode
-	pip install .[dev]
+	$(INSTALL_DEV_CMD)
 
-test:  ## Run tests
-	@uv run python -m unittest discover -s tests -p '*.py'
+venv:  ## Create a virtual environment
+	$(VENV_CMD)
 
 type:  ## Run pyright on the package
-	@uv run pyright dotenvplus --pythonversion 3.11
+	@$(RUN) pyright dotenvplus --pythonversion 3.10
 
 lint:  ## Run ruff linter
-	@uv run ruff check --config pyproject.toml
+	@$(RUN) ruff check --config pyproject.toml
 
-clean:  ## Clean the project
-	@rm -rf build dist *.egg-info .venv docs/_build
+test:  ## Run automated tests with Python unittest
+	@$(RUN) python -m unittest discover -s tests -p "test_*.py"
+
+clean:  ## Clean the project directory
+	@rm -rf build dist *.egg-info .venv
 	@rm uv.lock
 
-# Maintainer-only commands
-upload_pypi:  ## Maintainer only - Upload latest version to PyPi
+##@ Maintainer-only commands
+upload_pypi:  ## Upload latest version to PyPi
 	@echo Uploading to PyPi...
 	uv build
 	uvx uv-publish

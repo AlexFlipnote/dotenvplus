@@ -1,22 +1,23 @@
 import os
 import re
 
-from collections.abc import MutableMapping
-from typing import (
-    Any, Iterator, Optional, Tuple, Dict,
-    Generic, TypeVar, cast, TypedDict, List
-)
+from collections.abc import Iterator, MutableMapping
+from typing import Any, Generic, TypeVar, cast
 
-__version__ = "0.0.12"
+__version__ = "0.1.0"
+__all__ = (
+    "DotEnv",
+    "ParsingError",
+)
 
 # RegEx patterns
 re_keyvar = re.compile(r"^\s*(?:export\s+)?([a-zA-Z0-9_]+)\s*=\s*(.*)$")
 re_isdigit = re.compile(r"^(?:-)?\d+$")
 re_isfloat = re.compile(r"^(?:-)?\d+\.\d+$")
-re_var_call = re.compile(r"\$\{([a-zA-Z0-9_]*)\}")
+re_var_call = re.compile(r"\$\{([a-zA-Z0-9_]+)\}")
 
 # Return types
-DotT = TypeVar("DotT", bound=TypedDict)  # type: ignore
+DotT = TypeVar("DotT")
 
 
 class ParsingError(Exception):
@@ -46,9 +47,9 @@ class DotEnv(MutableMapping, Generic[DotT]):
         A DotEnv object that can be used to access the parsed values, just like dict.
         The object is a dictionary-like object, so you can do `DotEnv()["KEY"]` to access the value.
 
-        It also supports type hints, so you can do `env: DotEnv[TypedDict] = DotEnv(".env")`
-        and then `env.as_typed()` to get the parsed values as a typed dictionary.
-        One-line version: `env: DotEnv[TypedDict] = DotEnv[TypedDict](".env").as_typed()`
+        It also supports type hints via TypedDict. Define a TypedDict subclass with your keys,
+        then do `env: DotEnv[MyTypes] = DotEnv(".env")` and call `env.as_typed()` to get
+        a typed view. See `as_typed()` for a full example.
 
     Raises
     ------
@@ -57,26 +58,22 @@ class DotEnv(MutableMapping, Generic[DotT]):
     ParsingError
         If one of the values cannot be parsed.
     """
+
+    _QUOTES: tuple[str, ...] = ('"', "'")
+    _BOOLS: tuple[str, ...] = ("true", "false")
+    _NONE_VALUES: tuple[str, ...] = ("null", "none", "nil", "undefined")
+
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | os.PathLike[str] | None = None,
         *,
         update_system_env: bool = False,
         handle_key_not_found: bool = False,
     ):
-        # General values
-        self.__env: Dict[str, Any] = {}
-
-        # Defined values
-        self.__quotes: Tuple[str, ...] = ('"', "'")
-        self.__bools: Tuple[str, ...] = ("true", "false")
-        self.__none: Tuple[str, ...] = ("null", "none", "nil", "undefined")
-
-        # Config for the parser
-        self.__path: str = path or ".env"
+        self.__env: dict[str, Any] = {}
+        self.__path: str | os.PathLike[str] = path or ".env"
         self.__handle_key_not_found: bool = handle_key_not_found
 
-        # Finally, the parser
         self.__parser()
 
         if update_system_env:
@@ -86,7 +83,7 @@ class DotEnv(MutableMapping, Generic[DotT]):
             })
 
     def __repr__(self) -> str:
-        return f"<DotEnv {self.__env}>"
+        return f"<DotEnv path={self.__path!r} keys={list(self.__env.keys())}>"
 
     def __getitem__(self, key: str) -> Any:  # noqa: ANN401
         if self.__handle_key_not_found:
@@ -102,7 +99,7 @@ class DotEnv(MutableMapping, Generic[DotT]):
         del self.__env[key]
 
     def __str__(self) -> str:
-        return str(self.__env)
+        return repr(self)
 
     def __len__(self) -> int:
         return len(self.__env)
@@ -110,13 +107,9 @@ class DotEnv(MutableMapping, Generic[DotT]):
     def __iter__(self) -> Iterator[str]:
         return iter(self.__env)
 
-    def copy(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """ Returns a shallow copy of the parsed values. """
         return self.__env.copy()
-
-    def to_dict(self) -> Dict[str, Any]:
-        """ Returns a dictionary of the parsed values. """
-        return self.__env
 
     def as_typed(self) -> DotT:
         """
@@ -155,7 +148,7 @@ class DotEnv(MutableMapping, Generic[DotT]):
             If one of the values cannot be parsed.
         """
         with open(self.__path, encoding="utf-8") as f:
-            data: List[str] = f.readlines()
+            data: list[str] = f.readlines()
 
         for line_no, line in enumerate(data, start=1):
             line = line.strip()
@@ -175,7 +168,7 @@ class DotEnv(MutableMapping, Generic[DotT]):
 
             if (
                 len(value) >= 2 and
-                value[0] in self.__quotes and
+                value[0] in self._QUOTES and
                 value[0] == value[-1]
             ):
                 value = value[1:-1]
@@ -195,10 +188,10 @@ class DotEnv(MutableMapping, Generic[DotT]):
                 elif re_isfloat.search(value):
                     value = float(value)
 
-                elif value.lower() in self.__bools:
+                elif value.lower() in self._BOOLS:
                     value = value.lower() == "true"
 
-                elif value.lower() in self.__none:
+                elif value.lower() in self._NONE_VALUES:
                     value = None
 
             self.__env[key] = value
