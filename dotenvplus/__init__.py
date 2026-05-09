@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterator, MutableMapping
 from typing import Any, Generic, TypeVar, cast
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __all__ = (
     "DotEnv",
     "ParsingError",
