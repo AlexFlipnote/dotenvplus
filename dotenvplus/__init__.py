@@ -4,7 +4,7 @@ import re
 from collections.abc import Iterator, MutableMapping
 from typing import Any, Generic, TypeVar, cast
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = (
     "DotEnv",
     "ParsingError",
@@ -14,7 +14,7 @@ __all__ = (
 re_keyvar = re.compile(r"^\s*(?:export\s+)?([a-zA-Z0-9_]+)\s*=\s*(.*)$")
 re_isdigit = re.compile(r"^(?:-)?\d+$")
 re_isfloat = re.compile(r"^(?:-)?\d+\.\d+$")
-re_var_call = re.compile(r"\$\{([a-zA-Z0-9_]+)\}")
+re_var_call = re.compile(r"\$\{([a-zA-Z0-9_]+)\}|\$([a-zA-Z_][a-zA-Z0-9_]*)")
 
 # Return types
 DotT = TypeVar("DotT")
@@ -38,9 +38,15 @@ class DotEnv(MutableMapping, Generic[DotT]):
     update_system_env:
         If True, it will load the values to the instance's environment variables.
         Be warned that this will only support string values, so any other types will be converted to strings.
+    override:
+        Only relevant when `update_system_env=True`.
+        If False, keys already present in `os.environ` will not be overwritten.
+        Defaults to True.
     handle_key_not_found:
         If True, it will make the object return `None` for any key that is not found.
         Essentially simulating `dict().get("Key", None)`
+    encoding:
+        The encoding used to read the .env file. Defaults to `utf-8`.
 
     Returns
     -------
@@ -68,19 +74,20 @@ class DotEnv(MutableMapping, Generic[DotT]):
         path: str | os.PathLike[str] | None = None,
         *,
         update_system_env: bool = False,
+        override: bool = True,
         handle_key_not_found: bool = False,
+        encoding: str = "utf-8",
     ):
         self.__env: dict[str, Any] = {}
         self.__path: str | os.PathLike[str] = path or ".env"
         self.__handle_key_not_found: bool = handle_key_not_found
 
-        self.__parser()
+        self.__parser(encoding)
 
         if update_system_env:
-            os.environ.update({
-                key: str(value)
-                for key, value in self.__env.items()
-            })
+            for key, value in self.__env.items():
+                if override or key not in os.environ:
+                    os.environ[key] = str(value)
 
     def __repr__(self) -> str:
         return f"<DotEnv path={self.__path!r} keys={list(self.__env.keys())}>"
@@ -133,7 +140,7 @@ class DotEnv(MutableMapping, Generic[DotT]):
         """
         return cast("DotT", self.__env)
 
-    def __parser(self) -> None:
+    def __parser(self, encoding: str) -> None:
         """
         Parse the .env file and store the values in a dictionary.
 
@@ -147,10 +154,11 @@ class DotEnv(MutableMapping, Generic[DotT]):
         ParsingError
             If one of the values cannot be parsed.
         """
-        with open(self.__path, encoding="utf-8") as f:
+        with open(self.__path, encoding=encoding) as f:
             data: list[str] = f.readlines()
 
-        for line_no, line in enumerate(data, start=1):
+        lines = iter(enumerate(data, start=1))
+        for line_no, line in lines:
             line = line.strip()
 
             if line.startswith("#") or line == "":
@@ -166,19 +174,35 @@ class DotEnv(MutableMapping, Generic[DotT]):
             key, value = find_kv.groups()
             is_string_forced = False
 
-            if (
-                len(value) >= 2 and
-                value[0] in self._QUOTES and
-                value[0] == value[-1]
-            ):
-                value = value[1:-1]
-                is_string_forced = True
+            if value and value[0] in self._QUOTES:
+                quote_char = value[0]
+                if len(value) >= 2 and value[-1] == quote_char:
+                    # Same-line quoted string
+                    value = value[1:-1]
+                    is_string_forced = True
+                elif len(value) == 1 or value[-1] not in self._QUOTES:
+                    # Multiline: opening quote with no closing quote on this line
+                    parts = [value[1:]]
+                    for _, next_line in lines:
+                        next_line = next_line.rstrip("\n\r")
+                        if next_line.endswith(quote_char):
+                            parts.append(next_line[:-1])
+                            break
+                        parts.append(next_line)
+                    value = "\n".join(parts)
+                    is_string_forced = True
+                else:
+                    # Mismatched quotes, treat as unquoted
+                    value = value.split("#")[0].strip()
             else:
                 value = value.split("#")[0].strip()
 
             value = re_var_call.sub(
-                lambda m: str(self.__env.get(m.group(1), os.environ.get(m.group(1), ""))),
-                str(value)
+                lambda m: str(self.__env.get(
+                    m.group(1) or m.group(2),
+                    os.environ.get(m.group(1) or m.group(2), ""),
+                )),
+                str(value),
             )
 
             if not is_string_forced:

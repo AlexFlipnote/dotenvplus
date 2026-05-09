@@ -2,25 +2,18 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[[tool.pdm.source]]
-name = "public"
-url = "https://github.com/AlexFlipnote/dotenvplus"
-
 [project]
 name = "dotenvplus"
-description = "Reads key-value pairs from a .env file and supports multiple values with dynamic interpolation."
+description = "Dotenv parser with automatic type conversion, variable interpolation, and multiline support. Zero dependencies."
 requires-python = ">=3.10"
-license = "MIT"
+license-files = ["LICENSE"]
 
 dynamic = ["version"]
 readme = "README.md"
-keywords = ["dotenv", "env", "config", "environment", "variables", "key-value", "parser"]
+keywords = ["dotenv", "env", "config", "environment", "parser", "typed", "type-conversion"]
 authors = [{name = "AlexFlipnote", email = "root@alexflipnote.dev"}]
 
-dependencies = []
-
 [project.urls]
-Homepage = "https://github.com/AlexFlipnote/dotenvplus"
 Repository = "https://github.com/AlexFlipnote/dotenvplus"
 
 [dependency-groups]
@@ -41,7 +34,7 @@ readme = {file = ["README.md"]}
 [tool.ruff]
 target-version = "py310"
 indent-width = 4
-line-length = 256  # Debating to change this.. not sure yet
+line-length = 128
 output-format = "concise"
 
 # Files to include/exclude
@@ -90,7 +83,6 @@ select = [
   "W",     # Warning
 ]
 
-extend-select = ["W", "E"]
 preview = true
 
 ignore = [

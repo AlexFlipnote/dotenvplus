@@ -134,5 +134,49 @@ class TestDotEnv(unittest.TestCase):
         with self.assertRaises(TypeError):
             dotenv["BAD"] = [1, 2, 3]
 
+    def test_multiline_double_quote(self):
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write('KEY="line one\nline two"\n')
+        dotenv = DotEnv(self.file_path)
+        self.assertEqual(dotenv["KEY"], "line one\nline two")
+
+    def test_multiline_single_quote(self):
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write("KEY='first\nsecond\nthird'\n")
+        dotenv = DotEnv(self.file_path)
+        self.assertEqual(dotenv["KEY"], "first\nsecond\nthird")
+
+    def test_bare_variable_expansion(self):
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write("BASE=hello\nDERIVED=$BASE_world\n")
+        dotenv = DotEnv(self.file_path)
+        # $BASE_world matches key BASE_world (underscore is part of identifier)
+        # so it resolves to empty string since BASE_world doesn't exist
+        self.assertEqual(dotenv["DERIVED"], "")
+
+    def test_bare_variable_expansion_simple(self):
+        with open(self.file_path, "w", encoding="utf-8") as f:
+            f.write("BASE=hello\nDERIVED=$BASE\n")
+        dotenv = DotEnv(self.file_path)
+        self.assertEqual(dotenv["DERIVED"], "hello")
+
+    def test_override_false_does_not_overwrite(self):
+        os.environ["STRING_KEY"] = "already_set"
+        DotEnv(self.file_path, update_system_env=True, override=False)
+        self.assertEqual(os.environ["STRING_KEY"], "already_set")
+        del os.environ["STRING_KEY"]
+
+    def test_override_true_overwrites(self):
+        os.environ["STRING_KEY"] = "already_set"
+        DotEnv(self.file_path, update_system_env=True, override=True)
+        self.assertEqual(os.environ["STRING_KEY"], "HelloWorld")
+        del os.environ["STRING_KEY"]
+
+    def test_encoding_parameter(self):
+        with open(self.file_path, "w", encoding="latin-1") as f:
+            f.write("KEY=caf\xe9\n")
+        dotenv = DotEnv(self.file_path, encoding="latin-1")
+        self.assertEqual(dotenv["KEY"], "café")
+
 if __name__ == "__main__":
     unittest.main()

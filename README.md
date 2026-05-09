@@ -44,16 +44,31 @@ Values are automatically converted to the appropriate Python type:
 Quoting a value (single or double quotes) forces it to remain a string regardless of its content.
 
 ## Variable interpolation
-Reference other keys or system environment variables using `${VAR}`:
+Reference other keys or system environment variables using `${VAR}` or `$VAR`:
 
 ```env
 HOST=localhost
 PORT=5432
 DATABASE_URL=postgres://${HOST}:${PORT}/mydb
+REPLICA_URL=postgres://$HOST:$PORT/replica
 ```
 
 ```python
-env["DATABASE_URL"]  # "postgres://localhost:5432/mydb"
+env["DATABASE_URL"]   # "postgres://localhost:5432/mydb"
+env["REPLICA_URL"]    # "postgres://localhost:5432/replica"
+```
+
+## Multiline values
+Wrap a value in quotes and span it across multiple lines:
+
+```env
+PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----
+MIIEowIBAAKCAQEA...
+-----END RSA PRIVATE KEY-----"
+```
+
+```python
+env["PRIVATE_KEY"]  # "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----"
 ```
 
 ## Constructor options
@@ -65,6 +80,12 @@ env["MISSING"]  # None
 
 # Loads all values into os.environ (non-strings are converted to strings)
 env = DotEnv(".env", update_system_env=True)
+
+# Don't overwrite keys already set in os.environ (useful as a dev fallback)
+env = DotEnv(".env", update_system_env=True, override=False)
+
+# Custom file encoding (defaults to utf-8)
+env = DotEnv(".env", encoding="latin-1")
 ```
 
 ## TypedDict support
